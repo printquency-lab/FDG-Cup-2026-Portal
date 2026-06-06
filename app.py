@@ -6,44 +6,43 @@ import requests
 # Set page layout to centered
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# Advanced CSS Injector for background sync, glassmorphic card, and optimized scaling
+# Advanced CSS Injector for maximum camera scaling and edge-to-edge frame layout
 st.markdown("""
     <style>
-    /* 1. Global Background Image Sync */
+    /* 1. Global Background Setup */
     [data-testid="stAppViewContainer"] {
         background-image: url('https://lh3.googleusercontent.com/d/1Ta76TkvnUcNszyAPIsmob0oCMoMFzbTC');
-        background-size: 100% 100%;
+        background-size: cover;
         background-repeat: no-repeat;
         background-attachment: fixed;
         background-position: center;
     }
     
-    /* Transparent default header */
     [data-testid="stHeader"] {
         background: transparent !important;
     }
     
-    /* 2. Glassmorphic Central Wrapper Card (Matches Registration Portal) */
+    /* 2. Optimized Glassmorphic Card Container */
     [data-testid="stMainBlockContainer"] {
-        background-color: rgba(31, 41, 55, 0.85) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: rgba(23, 29, 41, 0.9) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 24px;
-        padding: 24px 32px !important;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-        max-width: 520px !important;
-        margin: 30px auto !important;
+        padding: 20px 20px !important; /* Tighter padding to give layout elements more breathing room */
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        max-width: 480px !important;
+        margin: 15px auto !important;
     }
     
     /* 3. Streamlined Compact Branding Header */
     .branding-container {
         text-align: center;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
     }
     .branding-title {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 30px;
+        font-size: 28px;
         font-weight: 800;
         color: #ffffff;
         line-height: 1.1;
@@ -56,25 +55,32 @@ st.markdown("""
         font-weight: 700;
         color: #10b981;
         letter-spacing: 2px;
-        margin-top: 4px;
+        margin-top: 2px;
         text-transform: uppercase;
     }
     
-    /* 4. MAXIMUM WIDESCREEN CAMERA VIEWPORT */
+    /* 4. MAXIMIZE CAMERA VIEWPORT & IFRAME WRAPPER */
+    /* Forces the third-party camera element and its iframe container to grow vertically */
+    iframe {
+        height: 400px !important; /* Blows up the vertical footprint on mobile screens */
+        width: 100% !important;
+        border-radius: 16px !important;
+    }
+    
     div div data-testid="stMarkdownContainer" video,
     div.element-container video,
     video {
         width: 100% !important;
-        max-width: 100% !important; /* Spans fully edge-to-edge inside the frame card */
-        height: auto !important;
+        height: 400px !important; /* Matches wrapper height perfectly */
+        object-fit: cover !important; /* CRUCIAL: Crops outer landscape space to fill the card portrait-style */
         border-radius: 16px !important;
         border: 3px solid #10b981 !important;
-        box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         margin: 0 auto !important;
         display: block !important;
     }
     
-    /* Transaction Elements */
+    /* Transaction Result UI Enhancements */
     div.stButton > button:first-child { 
         background-color: #10b981 !important; 
         color: white !important; 
@@ -84,25 +90,21 @@ st.markdown("""
         border-radius: 12px !important;
         border: none !important;
         font-size: 15px;
-        transition: all 0.2s ease;
-    }
-    div.stButton > button:first-child:hover {
-        transform: translateY(-1px);
-        filter: brightness(1.1);
     }
     .badge-container { 
-        background: rgba(0, 0, 0, 0.3); 
+        background: rgba(0, 0, 0, 0.4); 
         padding: 20px; 
         border-radius: 14px; 
         border: 1px solid #10b981; 
-        text-align: center; 
-        margin-top: 15px;
+        text-align: center;
+        margin-top: 10px;
     }
     .badge-container.duplicate { border: 1px solid #ef4444; }
-    .badge-number { font-size: 44px; font-weight: 800; color: #facc15; margin: 4px 0; }
+    .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 4px 0; }
     
-    /* Hide Streamlit default interface clutter for an app-like feel */
+    /* Eliminates default deployment footer margins */
     #MainMenu, footer {visibility: hidden;}
+    .block-container {padding-bottom: 0rem !important;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -111,7 +113,7 @@ st.markdown("""
 # -------------------------------------------------------------------------
 st.markdown("""
     <div class="branding-container">
-        <img src="https://lh3.googleusercontent.com/d/1M8wUXNnP8dQoNhmE896WXDuwXlLQFk-G" alt="FDG Logo" style="max-width:65px; height:auto; margin-bottom:4px;">
+        <img src="https://lh3.googleusercontent.com/d/1M8wUXNnP8dQoNhmE896WXDuwXlLQFk-G" alt="FDG Logo" style="max-width:60px; height:auto; margin-bottom:2px;">
         <div class="branding-title">FDG CUP <span style="color:#facc15;">2026</span></div>
         <div class="branding-subtitle">Gate Marshal Portal</div>
     </div>
@@ -176,12 +178,12 @@ if st.session_state.active_scan_completed:
         st.rerun()
 
 # -------------------------------------------------------------------------
-# INTERFACE STATE 2: ENLARGED ACTIVE SCANNER MATRIX SCREEN
+# INTERFACE STATE 2: MAXIMIZED ACTIVE SCANNER VIEWPORT
 # -------------------------------------------------------------------------
 else:
-    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:10px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
     
-    # Render Active Lens (stretching edge-to-edge inside custom card)
+    # Active Scanning Lens
     scanned_raw = qrcode_scanner(key='live_marshal_camera_engine')
     
     if scanned_raw:
