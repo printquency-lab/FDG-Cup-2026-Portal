@@ -6,7 +6,7 @@ import requests
 # Set page layout to centered
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# Clean, stable CSS for full-screen background, glassmorphism card, and an enlarged camera viewport
+# Optimized CSS to snap the green border tightly to the camera feed and center the crop marks
 st.markdown("""
     <style>
     /* 1. Global Background Image Sync */
@@ -59,15 +59,21 @@ st.markdown("""
         text-transform: uppercase;
     }
     
-    /* 4. SAFE STABLE CAMERA ENLARGEMENT */
-    /* Dynamically targets the component window without breaking the underlying JavaScript engine */
+    /* 4. PERFECT CAMERA & VIEWFINDER FRAMING */
+    /* Snaps the green border tightly around the video frame, removing the black bottom bar */
+    div[data-testid="stCustomComponentV1"] {
+        width: 100% !important;
+        margin-bottom: 15px !important;
+    }
+    
     iframe {
         width: 100% !important;
-        min-height: 380px !important; /* Locks a tall, clean viewport layout on mobile devices */
+        height: 260px !important; /* Calibrated to fit the stream aspect ratio seamlessly */
         border-radius: 16px !important;
-        border: 3px solid #10b981 !important; /* Emerald framing */
-        box-shadow: 0 15px 30px rgba(0,0,0,0.5);
-        background-color: #000000;
+        border: 3px solid #10b981 !important; /* Emerald border fits perfectly on the camera edges */
+        box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+        background-color: #111827;
+        display: block !important;
     }
     
     /* Result Display Cards Styling */
@@ -168,7 +174,7 @@ if st.session_state.active_scan_completed:
         st.rerun()
 
 # -------------------------------------------------------------------------
-# INTERFACE STATE 2: ENLARGED ACTIVE SCANNER MATRIX SCREEN
+# INTERFACE STATE 2: PERFECTLY ALIGNED ACTIVE SCANNER SCREEN
 # -------------------------------------------------------------------------
 else:
     st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
