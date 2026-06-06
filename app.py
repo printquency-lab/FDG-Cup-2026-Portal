@@ -3,22 +3,65 @@ from streamlit_qrcode_scanner import qrcode_scanner
 import pandas as pd
 import requests
 
-# Set page layout to match premium tournament aesthetic
-st.set_page_config(page_title="FDG Cup 2026 - Marshal Gate Desk", page_icon="🛡️", layout="centered")
+# Set page layout to centered
+st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# Custom CSS for UI consistency (Glassmorphism + Gold/Emerald Accents)
+# Advanced CSS Injector for expanded camera view and exact header replication
 st.markdown("""
     <style>
+    /* Main container background tuning */
     .main { background-color: #111827; }
-    h1 { font-family: 'Space Grotesk', sans-serif; color: #ffffff; text-align: center; font-weight: 700; }
+    
+    /* Branding Header Blocks */
+    .branding-container {
+        text-align: center;
+        margin-bottom: 25px;
+        padding-top: 10px;
+    }
+    .branding-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 42px;
+        font-weight: 800;
+        color: #ffffff;
+        line-height: 1.1;
+        margin: 5px 0;
+        letter-spacing: -1px;
+    }
+    .branding-subtitle {
+        font-family: 'Urbanist', sans-serif;
+        font-size: 18px;
+        font-weight: 700;
+        color: #10b981; /* Precise signature emerald green from your design */
+        letter-spacing: 2px;
+        margin-top: 12px;
+        text-transform: uppercase;
+    }
+    
+    /* FORCE CAMERA VIEWPORT EXPANSION */
+    /* Targets the embedded video elements inside the third-party scanner component */
+    div div data-testid="stMarkdownContainer" video,
+    div.element-container video,
+    video {
+        width: 100% !important;
+        max-width: 580px !important; /* Forces the camera preview box to be much larger */
+        height: auto !important;
+        border-radius: 20px !important;
+        border: 4px solid #10b981 !important; /* Highlights scanner frame window with theme color */
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        margin: 0 auto !important;
+        display: block !important;
+    }
+    
+    /* Transaction Result Display Styling */
     div.stButton > button:first-child { 
         background-color: #10b981 !important; 
         color: white !important; 
         font-weight: bold; 
         width: 100% !important; 
-        padding: 14px !important;
+        padding: 16px !important;
         border-radius: 12px !important;
         border: none !important;
+        font-size: 16px;
         transition: all 0.2s ease;
     }
     div.stButton > button:first-child:hover {
@@ -34,29 +77,36 @@ st.markdown("""
         margin-top: 15px;
         backdrop-filter: blur(12px);
     }
-    .badge-container.duplicate {
-        border: 1px solid #ef4444;
-    }
-    .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 8px 0; letter-spacing: -1px; }
+    .badge-container.duplicate { border: 1px solid #ef4444; }
+    .badge-number { font-size: 48px; font-weight: 800; color: #facc15; margin: 6px 0; }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1>🏆 FDG CUP <span style='color:#facc15;'>2026</span><br><span style='font-size:16px; color:#10b981; letter-spacing:1px; vertical-align:middle;'>GATE MARSHAL PORTAL</span></h1>", unsafe_allow_html=True)
+# -------------------------------------------------------------------------
+# NEW REPLICATED BRANDING HEADER BLOCK
+# -------------------------------------------------------------------------
+st.markdown("""
+    <div class="branding-container">
+        <img src="https://lh3.googleusercontent.com/d/1M8wUXNnP8dQoNhmE896WXDuwXlLQFk-G" alt="FDG Logo" style="max-width:130px; height:auto; margin-bottom:5px;">
+        <div class="branding-title">FDG CUP <span style="color:#facc15;">2026</span></div>
+        <div class="branding-subtitle">Gate Marshal Portal</div>
+    </div>
+""", unsafe_allow_html=True)
 st.markdown("---")
 
 # =========================================================================
-# CONFIGURATION TARGETS (Update these with your fresh 2026 deployment IDs)
+# CONFIGURATION TARGETS
 # =========================================================================
-GAS_URL = "https://script.google.com/macros/s/AKfycbxRFe12YikzzzbaNsFuun22bfzqfydewNaAeafqWY2lfXNlibQhqkwBMsynOiGwJIGRDw/exec" 
+GAS_URL = "https://script.google.com/macros/s/AKfycbxWasvts-sTpJijDUC5K0KKdLuclSt89j3YxE5qO8g4jyYqq7sd4i9lduGpcfrd9AO20w/exec" 
 SPREADSHEET_ID = "1l4khiRO2fGqZQ600xcdrVNY_sP0NvmDdPQiOa-jPfR8"
 
-# State Management (Fixed the session_state assignment bug here)
+# State Management
 if "active_scan_completed" not in st.session_state:
     st.session_state.active_scan_completed = False
 if "display_payload" not in st.session_state:
     st.session_state.display_payload = {}
 
-# Backend Communication Engine
+# Data Pipeline Engine
 def fetch_sheet_data():
     csv_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid=0"
     df = pd.read_csv(csv_url, header=None)
@@ -64,16 +114,14 @@ def fetch_sheet_data():
 
 def send_checkin_to_gas(row_id):
     try:
-        # Handshake transmission out to Apps Script routing infrastructure
         requests.get(GAS_URL, params={"mode": "verify_bypass", "pid": row_id}, timeout=10)
     except:
         pass
 
-# Initialize Data Cache Fetch
 all_records = fetch_sheet_data()
 
 # -------------------------------------------------------------------------
-# RENDER SCREEN 1: TRANSACTION RESULT MONITOR
+# INTERFACE STATE 1: SCREEN ENTRY MONITOR (SUCCESS / DUPLICATE)
 # -------------------------------------------------------------------------
 if st.session_state.active_scan_completed:
     payload = st.session_state.display_payload
@@ -104,22 +152,20 @@ if st.session_state.active_scan_completed:
         st.rerun()
 
 # -------------------------------------------------------------------------
-# RENDER SCREEN 2: ACTIVE HARDWARE SCANNING VIEWPORT
+# INTERFACE STATE 2: ENLARGED ACTIVE SCANNER MATRIX SCREEN
 # -------------------------------------------------------------------------
 else:
-    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:15px;'>Align player credentials token inside camera matrix frame window</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:14px; margin-bottom:15px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
+    
+    # Render Active Lens
     scanned_raw = qrcode_scanner(key='live_marshal_camera_engine')
     
     if scanned_raw:
         try:
-            # Parse row tracking sequence from alphanumeric token string (e.g., "FDG26-14")
             parts = scanned_raw.split("-")
             row_id = int(parts[1]) 
             
-            # Cross-reference row index direct to target Google Sheet array block
             player_row = all_records[row_id] 
-            
-            # Map standard spreadsheet columns indices safely
             player_name = f"{player_row[1]} {player_row[0]}"
             bag_number = player_row[5] 
             attendance_status = str(player_row[6]).strip()
