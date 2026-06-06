@@ -6,7 +6,7 @@ import requests
 # Set page layout to centered
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# Advanced CSS Injector for background, glass card, and maximized viewfinder marks
+# Advanced CSS Injector for background, glass card, and the Iframe Scale & Clip engine
 st.markdown("""
     <style>
     /* 1. Global Background Setup */
@@ -59,28 +59,28 @@ st.markdown("""
         text-transform: uppercase;
     }
     
-    /* 4. MAXIMIZE CAMERA & VIEWFINDER CROP MARKS */
-    iframe {
-        height: 400px !important; 
+    /* 4. THE SCALE & CLIP VIEWPORT ENGINE */
+    /* Targets the parent block wrapper of the scanner to clip oversized margins */
+    div[data-testid="stCustomComponentV1"] {
         width: 100% !important;
-        border-radius: 16px !important;
+        height: 380px !important; /* Locked window height on mobile screen */
+        border-radius: 20px !important;
+        border: 3px solid #10b981 !important; /* Official Emerald Border Frame */
+        overflow: hidden !important; /* Clips away the unneeded outer camera area */
+        position: relative !important;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+        background-color: #000000 !important;
     }
     
-    video {
+    /* Forces the sandboxed iframe to blow up, amplifying the crop marks inside */
+    div[data-testid="stCustomComponentV1"] iframe {
         width: 100% !important;
-        height: 400px !important;
-        object-fit: cover !important;
-        border-radius: 16px !important;
-        border: 3px solid #10b981 !important;
-    }
-
-    /* Target the white 'crop marks' / internal finder box specifically */
-    /* This forces the overlay box to fill the entire video frame */
-    div[style*="position: absolute"] div[style*="border"] {
-        width: 90% !important;
-        height: 90% !important;
-        top: 5% !important;
-        left: 5% !important;
+        height: 380px !important;
+        transform: scale(1.65) !important; /* Zoom factor: expands video and white target lines simultaneously */
+        transform-origin: center center !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
     }
     
     /* Transaction Result UI Enhancements */
@@ -104,7 +104,7 @@ st.markdown("""
     .badge-container.duplicate { border: 1px solid #ef4444; }
     .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 4px 0; }
     
-    /* Cleanup */
+    /* Interface Optimization Clutter Cleaners */
     #MainMenu, footer {visibility: hidden;}
     .block-container {padding-bottom: 0rem !important;}
     </style>
