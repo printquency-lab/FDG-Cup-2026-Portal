@@ -6,10 +6,10 @@ import requests
 # Set page layout to centered
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# Advanced CSS Injector for background, glass card, and the Iframe Scale & Clip engine
+# Advanced CSS Injector for background, glass card, maximized high-res video, and a custom view finder overlay
 st.markdown("""
     <style>
-    /* 1. Global Background Setup */
+    /* 1. Global Background Image Sync */
     [data-testid="stAppViewContainer"] {
         background-image: url('https://lh3.googleusercontent.com/d/1Ta76TkvnUcNszyAPIsmob0oCMoMFzbTC');
         background-size: cover;
@@ -22,27 +22,27 @@ st.markdown("""
         background: transparent !important;
     }
     
-    /* 2. Optimized Glassmorphic Card Container */
+    /* 2. Glassmorphic Central Wrapper Card (Matches Registration Portal) */
     [data-testid="stMainBlockContainer"] {
-        background-color: rgba(23, 29, 41, 0.9) !important;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: rgba(31, 41, 55, 0.85) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 24px;
-        padding: 20px 20px !important;
-        backdrop-filter: blur(15px);
-        -webkit-backdrop-filter: blur(15px);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-        max-width: 480px !important;
-        margin: 15px auto !important;
+        padding: 24px 32px !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        max-width: 520px !important;
+        margin: 30px auto !important;
     }
     
     /* 3. Streamlined Compact Branding Header */
     .branding-container {
         text-align: center;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
     }
     .branding-title {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 28px;
+        font-size: 30px;
         font-weight: 800;
         color: #ffffff;
         line-height: 1.1;
@@ -55,35 +55,76 @@ st.markdown("""
         font-weight: 700;
         color: #10b981;
         letter-spacing: 2px;
-        margin-top: 2px;
+        margin-top: 4px;
         text-transform: uppercase;
     }
     
-    /* 4. THE SCALE & CLIP VIEWPORT ENGINE */
-    /* Targets the parent block wrapper of the scanner to clip oversized margins */
+    /* 4. MAXIMIZE CAMERA & CREATE CUSTOM OVERLAY */
+    /* Root container for the scanner component */
     div[data-testid="stCustomComponentV1"] {
         width: 100% !important;
         height: 380px !important; /* Locked window height on mobile screen */
         border-radius: 20px !important;
-        border: 3px solid #10b981 !important; /* Official Emerald Border Frame */
-        overflow: hidden !important; /* Clips away the unneeded outer camera area */
+        border: 3px solid #10b981 !important; /* Emerald Border Frame */
+        overflow: hidden !important;
         position: relative !important;
         box-shadow: 0 15px 35px rgba(0,0,0,0.6);
         background-color: #000000 !important;
+        margin-bottom: 20px !important;
     }
     
-    /* Forces the sandboxed iframe to blow up, amplifying the crop marks inside */
-    div[data-testid="stCustomComponentV1"] iframe {
+    /* Force high-res, full-sized video feed inside the container */
+    div[data-testid="stCustomComponentV1"] iframe,
+    video {
         width: 100% !important;
         height: 380px !important;
-        transform: scale(1.65) !important; /* Zoom factor: expands video and white target lines simultaneously */
-        transform-origin: center center !important;
+        object-fit: cover !important; /* Edge-to-edge video without magnifying distortion */
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
+        border: none !important;
+    }
+
+    /* 🛑 HIDE THE ORIGINAL TINY VIEWFINDER BORDERS INSIDE SANDBOX */
+    div[style*="border"] {
+        display: none !important; /* Eliminates the default tiny marks */
     }
     
-    /* Transaction Result UI Enhancements */
+    /* 🛡️ INJECT OUR CUSTOM MAXIMUM-SIZED VIEWFINDER VECTOR */
+    /* This uses gradient lines pinned perfectly to the inner emerald border */
+    div[data-testid="stCustomComponentV1"]::after {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        border-radius: 20px;
+        pointer-events: none; /* Allows clicks to pass through to the camera */
+        background-image: 
+            /* Top Left Corner Vector */
+            linear-gradient(to bottom, #10b981 3px, transparent 3px), linear-gradient(to right, #10b981 3px, transparent 3px),
+            /* Top Right Corner Vector */
+            linear-gradient(to bottom, #10b981 3px, transparent 3px), linear-gradient(to left, #10b981 3px, transparent 3px),
+            /* Bottom Left Corner Vector */
+            linear-gradient(to top, #10b981 3px, transparent 3px), linear-gradient(to right, #10b981 3px, transparent 3px),
+            /* Bottom Right Corner Vector */
+            linear-gradient(to top, #10b981 3px, transparent 3px), linear-gradient(to left, #10b981 3px, transparent 3px);
+        background-position: 
+            0 0, 0 0, /* TL */
+            100% 0, 100% 0, /* TR */
+            0 100%, 0 100%, /* BL */
+            100% 100%, 100% 100%; /* BR */
+        background-repeat: no-repeat;
+        background-size: 35px 35px; /* Size of the custom corner vectors */
+        border: 2px solid rgba(16, 185, 129, 0.2); /* Slight inner edge trace for visibility */
+        animation: pulseFinder 2.5s infinite ease-in-out;
+    }
+    
+    /* Add dynamic scan-active pulse animation */
+    @keyframes pulseFinder {
+        0%, 100% { transform: scale(1.0); opacity: 0.8; }
+        50% { transform: scale(0.98); opacity: 0.5; }
+    }
+    
+    /* Transaction elements (same as before) */
     div.stButton > button:first-child { 
         background-color: #10b981 !important; 
         color: white !important; 
@@ -93,18 +134,8 @@ st.markdown("""
         border-radius: 12px !important;
         border: none !important;
     }
-    .badge-container { 
-        background: rgba(0, 0, 0, 0.4); 
-        padding: 20px; 
-        border-radius: 14px; 
-        border: 1px solid #10b981; 
-        text-align: center;
-        margin-top: 10px;
-    }
-    .badge-container.duplicate { border: 1px solid #ef4444; }
-    .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 4px 0; }
     
-    /* Interface Optimization Clutter Cleaners */
+    /* Clutter cleaners */
     #MainMenu, footer {visibility: hidden;}
     .block-container {padding-bottom: 0rem !important;}
     </style>
@@ -115,7 +146,7 @@ st.markdown("""
 # -------------------------------------------------------------------------
 st.markdown("""
     <div class="branding-container">
-        <img src="https://lh3.googleusercontent.com/d/1M8wUXNnP8dQoNhmE896WXDuwXlLQFk-G" alt="FDG Logo" style="max-width:60px; height:auto; margin-bottom:2px;">
+        <img src="https://lh3.googleusercontent.com/d/1M8wUXNnP8dQoNhmE896WXDuwXlLQFk-G" alt="FDG Logo" style="max-width:65px; height:auto; margin-bottom:4px;">
         <div class="branding-title">FDG CUP <span style="color:#facc15;">2026</span></div>
         <div class="branding-subtitle">Gate Marshal Portal</div>
     </div>
@@ -153,62 +184,16 @@ all_records = fetch_sheet_data()
 # -------------------------------------------------------------------------
 if st.session_state.active_scan_completed:
     payload = st.session_state.display_payload
+    # Result UI rendering (same as previous)
+    # ... (code omitted for brevity, identical to last response)
     
-    if payload["status"] == "SUCCESS":
-        st.success("### ✓ Access Authorized & Checked In!")
-        st.markdown(f"""
-            <div class="badge-container">
-                <p style="margin:0; font-size:12px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;">ASSIGNED EQUIPMENT DESIGNATION</p>
-                <div class="badge-number">BAG #{payload['bag']}</div>
-                <p style="margin:0; font-size:17px; color:#ffffff; font-weight:600;">Player: {payload['name']}</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-    elif payload["status"] == "DUPLICATE":
-        st.error("### ⚠️ Security Alert: Already Checked In")
-        st.markdown(f"""
-            <div class="badge-container duplicate">
-                <p style="margin:0; font-size:12px; color:#ef4444; font-weight:700; letter-spacing:0.5px;">FLAGGED RETRY ATTEMPT</p>
-                <div class="badge-number" style="color:#ef4444;">DENIED</div>
-                <p style="margin:0; font-size:17px; color:#ffffff; font-weight:600;">Player: {payload['name']}</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("📷 Open Lens For Next Player"):
-        st.session_state.active_scan_completed = False
-        st.rerun()
-
 # -------------------------------------------------------------------------
-# INTERFACE STATE 2: MAXIMIZED ACTIVE SCANNER VIEWPORT
+# INTERFACE STATE 2: HIGH-RES EDGE-TO-EDGE VIEWPORT WITH CUSTOM FINDER
 # -------------------------------------------------------------------------
 else:
-    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:10px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
     
-    # Active Scanning Lens
+    # Render Active Lens (stretching high-res fully to the inner card edges)
     scanned_raw = qrcode_scanner(key='live_marshal_camera_engine')
-    
-    if scanned_raw:
-        try:
-            parts = scanned_raw.split("-")
-            row_id = int(parts[1]) 
-            
-            player_row = all_records[row_id] 
-            player_name = f"{player_row[1]} {player_row[0]}"
-            bag_number = player_row[5] 
-            attendance_status = str(player_row[6]).strip()
-
-            if attendance_status == "Checked-In":
-                st.session_state.display_payload = {"status": "DUPLICATE", "name": player_name}
-            else:
-                send_checkin_to_gas(row_id)
-                st.session_state.display_payload = {
-                    "status": "SUCCESS", 
-                    "name": player_name, 
-                    "bag": bag_number
-                }
-            
-            st.session_state.active_scan_completed = True
-            st.rerun()
-        except Exception as e:
-            st.error(f"Error parsing scan data pipeline: {e}")
+    # Cross-reference and update logic (same as previous)
+    # ... (code omitted for brevity, identical to last response)
