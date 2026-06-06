@@ -6,62 +6,84 @@ import requests
 # Set page layout to centered
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# Advanced CSS Injector for expanded camera view and exact header replication
+# Advanced CSS Injector for background sync, glassmorphic card, and optimized scaling
 st.markdown("""
     <style>
-    /* Main container background tuning */
-    .main { background-color: #111827; }
+    /* 1. Global Background Image Sync */
+    [data-testid="stAppViewContainer"] {
+        background-image: url('https://lh3.googleusercontent.com/d/1Ta76TkvnUcNszyAPIsmob0oCMoMFzbTC');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center;
+    }
     
-    /* Branding Header Blocks */
+    /* Transparent default header */
+    [data-testid="stHeader"] {
+        background: transparent !important;
+    }
+    
+    /* 2. Glassmorphic Central Wrapper Card (Matches Registration Portal) */
+    [data-testid="stMainBlockContainer"] {
+        background-color: rgba(31, 41, 55, 0.85) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: 24px 32px !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        max-width: 520px !important;
+        margin: 30px auto !important;
+    }
+    
+    /* 3. Streamlined Compact Branding Header */
     .branding-container {
         text-align: center;
-        margin-bottom: 25px;
-        padding-top: 10px;
+        margin-bottom: 15px;
     }
     .branding-title {
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 42px;
+        font-size: 30px;
         font-weight: 800;
         color: #ffffff;
         line-height: 1.1;
-        margin: 5px 0;
-        letter-spacing: -1px;
+        margin: 2px 0;
+        letter-spacing: -0.5px;
     }
     .branding-subtitle {
         font-family: 'Urbanist', sans-serif;
-        font-size: 18px;
+        font-size: 13px;
         font-weight: 700;
-        color: #10b981; /* Precise signature emerald green from your design */
+        color: #10b981;
         letter-spacing: 2px;
-        margin-top: 12px;
+        margin-top: 4px;
         text-transform: uppercase;
     }
     
-    /* FORCE CAMERA VIEWPORT EXPANSION */
-    /* Targets the embedded video elements inside the third-party scanner component */
+    /* 4. MAXIMUM WIDESCREEN CAMERA VIEWPORT */
     div div data-testid="stMarkdownContainer" video,
     div.element-container video,
     video {
         width: 100% !important;
-        max-width: 580px !important; /* Forces the camera preview box to be much larger */
+        max-width: 100% !important; /* Spans fully edge-to-edge inside the frame card */
         height: auto !important;
-        border-radius: 20px !important;
-        border: 4px solid #10b981 !important; /* Highlights scanner frame window with theme color */
-        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        border-radius: 16px !important;
+        border: 3px solid #10b981 !important;
+        box-shadow: 0 15px 30px rgba(0,0,0,0.4);
         margin: 0 auto !important;
         display: block !important;
     }
     
-    /* Transaction Result Display Styling */
+    /* Transaction Elements */
     div.stButton > button:first-child { 
         background-color: #10b981 !important; 
         color: white !important; 
         font-weight: bold; 
         width: 100% !important; 
-        padding: 16px !important;
+        padding: 14px !important;
         border-radius: 12px !important;
         border: none !important;
-        font-size: 16px;
+        font-size: 15px;
         transition: all 0.2s ease;
     }
     div.stButton > button:first-child:hover {
@@ -69,25 +91,27 @@ st.markdown("""
         filter: brightness(1.1);
     }
     .badge-container { 
-        background: rgba(31, 41, 55, 0.6); 
-        padding: 24px; 
-        border-radius: 16px; 
+        background: rgba(0, 0, 0, 0.3); 
+        padding: 20px; 
+        border-radius: 14px; 
         border: 1px solid #10b981; 
         text-align: center; 
         margin-top: 15px;
-        backdrop-filter: blur(12px);
     }
     .badge-container.duplicate { border: 1px solid #ef4444; }
-    .badge-number { font-size: 48px; font-weight: 800; color: #facc15; margin: 6px 0; }
+    .badge-number { font-size: 44px; font-weight: 800; color: #facc15; margin: 4px 0; }
+    
+    /* Hide Streamlit default interface clutter for an app-like feel */
+    #MainMenu, footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
 # -------------------------------------------------------------------------
-# NEW REPLICATED BRANDING HEADER BLOCK
+# COMPACT BRANDING HEADER BLOCK
 # -------------------------------------------------------------------------
 st.markdown("""
     <div class="branding-container">
-        <img src="https://lh3.googleusercontent.com/d/1M8wUXNnP8dQoNhmE896WXDuwXlLQFk-G" alt="FDG Logo" style="max-width:130px; height:auto; margin-bottom:5px;">
+        <img src="https://lh3.googleusercontent.com/d/1M8wUXNnP8dQoNhmE896WXDuwXlLQFk-G" alt="FDG Logo" style="max-width:65px; height:auto; margin-bottom:4px;">
         <div class="branding-title">FDG CUP <span style="color:#facc15;">2026</span></div>
         <div class="branding-subtitle">Gate Marshal Portal</div>
     </div>
@@ -121,7 +145,7 @@ def send_checkin_to_gas(row_id):
 all_records = fetch_sheet_data()
 
 # -------------------------------------------------------------------------
-# INTERFACE STATE 1: SCREEN ENTRY MONITOR (SUCCESS / DUPLICATE)
+# INTERFACE STATE 1: TRANSACTION RESULT MONITOR
 # -------------------------------------------------------------------------
 if st.session_state.active_scan_completed:
     payload = st.session_state.display_payload
@@ -130,9 +154,9 @@ if st.session_state.active_scan_completed:
         st.success("### ✓ Access Authorized & Checked In!")
         st.markdown(f"""
             <div class="badge-container">
-                <p style="margin:0; font-size:13px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;">ASSIGNED EQUIPMENT DESIGNATION</p>
+                <p style="margin:0; font-size:12px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;">ASSIGNED EQUIPMENT DESIGNATION</p>
                 <div class="badge-number">BAG #{payload['bag']}</div>
-                <p style="margin:0; font-size:18px; color:#ffffff; font-weight:600;">Player: {payload['name']}</p>
+                <p style="margin:0; font-size:17px; color:#ffffff; font-weight:600;">Player: {payload['name']}</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -140,9 +164,9 @@ if st.session_state.active_scan_completed:
         st.error("### ⚠️ Security Alert: Already Checked In")
         st.markdown(f"""
             <div class="badge-container duplicate">
-                <p style="margin:0; font-size:13px; color:#ef4444; font-weight:700; letter-spacing:0.5px;">FLAGGED RETRY ATTEMPT</p>
+                <p style="margin:0; font-size:12px; color:#ef4444; font-weight:700; letter-spacing:0.5px;">FLAGGED RETRY ATTEMPT</p>
                 <div class="badge-number" style="color:#ef4444;">DENIED</div>
-                <p style="margin:0; font-size:18px; color:#ffffff; font-weight:600;">Player: {payload['name']}</p>
+                <p style="margin:0; font-size:17px; color:#ffffff; font-weight:600;">Player: {payload['name']}</p>
             </div>
         """, unsafe_allow_html=True)
     
@@ -155,9 +179,9 @@ if st.session_state.active_scan_completed:
 # INTERFACE STATE 2: ENLARGED ACTIVE SCANNER MATRIX SCREEN
 # -------------------------------------------------------------------------
 else:
-    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:14px; margin-bottom:15px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
     
-    # Render Active Lens
+    # Render Active Lens (stretching edge-to-edge inside custom card)
     scanned_raw = qrcode_scanner(key='live_marshal_camera_engine')
     
     if scanned_raw:
