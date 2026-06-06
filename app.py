@@ -6,7 +6,7 @@ import requests
 # Set page layout to centered
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# Advanced CSS Injector for maximum camera scaling and edge-to-edge frame layout
+# Advanced CSS Injector for background, glass card, and maximized viewfinder marks
 st.markdown("""
     <style>
     /* 1. Global Background Setup */
@@ -27,7 +27,7 @@ st.markdown("""
         background-color: rgba(23, 29, 41, 0.9) !important;
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 24px;
-        padding: 20px 20px !important; /* Tighter padding to give layout elements more breathing room */
+        padding: 20px 20px !important;
         backdrop-filter: blur(15px);
         -webkit-backdrop-filter: blur(15px);
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
@@ -59,25 +59,28 @@ st.markdown("""
         text-transform: uppercase;
     }
     
-    /* 4. MAXIMIZE CAMERA VIEWPORT & IFRAME WRAPPER */
-    /* Forces the third-party camera element and its iframe container to grow vertically */
+    /* 4. MAXIMIZE CAMERA & VIEWFINDER CROP MARKS */
     iframe {
-        height: 400px !important; /* Blows up the vertical footprint on mobile screens */
+        height: 400px !important; 
         width: 100% !important;
         border-radius: 16px !important;
     }
     
-    div div data-testid="stMarkdownContainer" video,
-    div.element-container video,
     video {
         width: 100% !important;
-        height: 400px !important; /* Matches wrapper height perfectly */
-        object-fit: cover !important; /* CRUCIAL: Crops outer landscape space to fill the card portrait-style */
+        height: 400px !important;
+        object-fit: cover !important;
         border-radius: 16px !important;
         border: 3px solid #10b981 !important;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        margin: 0 auto !important;
-        display: block !important;
+    }
+
+    /* Target the white 'crop marks' / internal finder box specifically */
+    /* This forces the overlay box to fill the entire video frame */
+    div[style*="position: absolute"] div[style*="border"] {
+        width: 90% !important;
+        height: 90% !important;
+        top: 5% !important;
+        left: 5% !important;
     }
     
     /* Transaction Result UI Enhancements */
@@ -89,7 +92,6 @@ st.markdown("""
         padding: 14px !important;
         border-radius: 12px !important;
         border: none !important;
-        font-size: 15px;
     }
     .badge-container { 
         background: rgba(0, 0, 0, 0.4); 
@@ -102,7 +104,7 @@ st.markdown("""
     .badge-container.duplicate { border: 1px solid #ef4444; }
     .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 4px 0; }
     
-    /* Eliminates default deployment footer margins */
+    /* Cleanup */
     #MainMenu, footer {visibility: hidden;}
     .block-container {padding-bottom: 0rem !important;}
     </style>
