@@ -6,7 +6,7 @@ import requests
 # Set page layout to centered
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# Optimized CSS to snap the green border tightly to the camera feed and center the crop marks
+# Optimized CSS to cleanly frame and center the internal viewfinder crop marks
 st.markdown("""
     <style>
     /* 1. Global Background Image Sync */
@@ -59,21 +59,28 @@ st.markdown("""
         text-transform: uppercase;
     }
     
-    /* 4. PERFECT CAMERA & VIEWFINDER FRAMING */
-    /* Snaps the green border tightly around the video frame, removing the black bottom bar */
+    /* 4. PERFECTLY VERTICALLY CENTERED VIEWFINDER WINDOW */
+    /* This acts as the outer mask window box holding the green border */
     div[data-testid="stCustomComponentV1"] {
         width: 100% !important;
+        height: 290px !important; /* Controls the clean height on mobile screens */
+        border-radius: 20px !important;
+        border: 3px solid #10b981 !important; /* Emerald framing stays perfectly sharp */
+        overflow: hidden !important; /* Slices away dead black zones at the bottom */
+        position: relative !important;
+        background-color: #111827;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.5);
         margin-bottom: 15px !important;
     }
     
-    iframe {
+    /* Gives the internal iframe enough height room to drop the white marks to the absolute center */
+    div[data-testid="stCustomComponentV1"] iframe {
         width: 100% !important;
-        height: 260px !important; /* Calibrated to fit the stream aspect ratio seamlessly */
-        border-radius: 16px !important;
-        border: 3px solid #10b981 !important; /* Emerald border fits perfectly on the camera edges */
-        box-shadow: 0 12px 28px rgba(0,0,0,0.5);
-        background-color: #111827;
-        display: block !important;
+        height: 350px !important; 
+        position: absolute !important;
+        top: -12px !important; /* Nudges the frame upwards to perfectly balance the viewfinder vertical center */
+        left: 0 !important;
+        border: none !important;
     }
     
     /* Result Display Cards Styling */
@@ -174,7 +181,7 @@ if st.session_state.active_scan_completed:
         st.rerun()
 
 # -------------------------------------------------------------------------
-# INTERFACE STATE 2: PERFECTLY ALIGNED ACTIVE SCANNER SCREEN
+# INTERFACE STATE 2: ALIGNED ACTIVE SCANNER SCREEN
 # -------------------------------------------------------------------------
 else:
     st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
