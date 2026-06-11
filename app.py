@@ -11,7 +11,7 @@ st.markdown("""
     <style>
     /* 1. Global Background Image Sync */
     [data-testid="stAppViewContainer"] {
-        background-image: url('https://lh3.googleusercontent.com/d/1Ta76TkvnUcNszyAPIsmob0oCMoMFzbTC');
+        background-color: #0f172a;
         background-size: cover;
         background-repeat: no-repeat;
         background-attachment: fixed;
@@ -59,7 +59,7 @@ st.markdown("""
         text-transform: uppercase;
     }
     
-    /* 4. PERFECTLY VERTICALLY CENTERED VIEWFINDER WINDOW */
+    /* 4. Center-Aligned Viewfinder Box */
     div[data-testid="stCustomComponentV1"] {
         width: 100% !important;
         height: 290px !important; 
@@ -103,7 +103,7 @@ st.markdown("""
     .badge-container.duplicate { border: 1px solid #ef4444; }
     .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 4px 0; }
     
-    /* Elegant frame styling for the identification photo card */
+    /* Elegant photo framing card layout */
     .stImage img {
         border-radius: 16px !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
@@ -116,12 +116,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# -------------------------------------------------------------------------
-# COMPACT BRANDING HEADER BLOCK
-# -------------------------------------------------------------------------
+# Branding Header
 st.markdown("""
     <div class="branding-container">
-        <img src="https://lh3.googleusercontent.com/d/1M8wUXNnP8dQoNhmE896WXDuwXlLQFk-G" alt="FDG Logo" style="max-width:65px; height:auto; margin-bottom:4px;">
         <div class="branding-title">FDG CUP <span style="color:#facc15;">2026</span></div>
         <div class="branding-subtitle">Gate Marshal Portal</div>
     </div>
@@ -141,10 +138,7 @@ if "display_payload" not in st.session_state:
     st.session_state.display_payload = {}
 
 def get_direct_drive_url(url):
-    """
-    Converts a Google Drive viewer URL into a direct asset endpoint link
-    using the modern, cookie-free Google content delivery network.
-    """
+    """Converts standard Drive link to modern web asset link formats cleanly."""
     if not url or "drive.google.com" not in url:
         return url
     try:
@@ -158,14 +152,13 @@ def get_direct_drive_url(url):
     except Exception:
         return url
 
-# Data Pipeline Engine
+# Data Fetch Pipeline
 def fetch_sheet_data():
     csv_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid=0"
     df = pd.read_csv(csv_url, header=None)
     return df.values.tolist()
 
 def send_checkin_to_gas(scanned_pid):
-    """Hits the Google Apps Script endpoint and captures the returned JSON payload data."""
     try:
         response = requests.get(GAS_URL, params={"mode": "verify_bypass", "pid": scanned_pid}, timeout=10)
         if response.status_code == 200:
@@ -184,5 +177,81 @@ if st.session_state.active_scan_completed:
     
     if payload["status"] == "SUCCESS":
         st.success("### ✓ Access Authorized & Checked In!")
-        st.markdown(f"""
-            <div class="badge
+        
+        # Safe String Formatter rendering protects against syntax errors
+        success_badge = """
+        <div class="badge-container">
+            <p style="margin:0; font-size:12px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;">ASSIGNED EQUIPMENT DESIGNATION</p>
+            <div class="badge-number">BAG #{bag}</div>
+            <p style="margin:0; font-size:17px; color:#ffffff; font-weight:600;">Player: {name}</p>
+        </div>
+        """.format(bag=payload.get('bag', 'N/A'), name=payload.get('name', 'Unknown'))
+        st.markdown(success_badge, unsafe_allow_html=True)
+        
+        # Profile Photo Box Execution
+        if payload.get("id_url") and str(payload["id_url"]).strip():
+            st.markdown("<p style='margin:15px 0 5px 5px; font-size:12px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;'>VERIFICATION PROFILE PHOTO</p>", unsafe_allow_html=True)
+            direct_img_link = get_direct_drive_url(payload["id_url"])
+            
+            try:
+                # Backend data streaming bypasses client browser sandbox rules completely
+                img_response = requests.get(direct_img_link, timeout=7)
+                if img_response.status_code == 200:
+                    st.image(img_response.content, use_container_width=True)
+                else:
+                    st.warning("⚠️ Reference photo link found, but target asset denied direct access request.")
+            except Exception as e:
+                st.error(f"Failed to load verification card photo: {e}")
+        else:
+            st.info("ℹ️ Account verified. No reference identification attachment found.")
+        
+    elif payload["status"] == "DUPLICATE":
+        st.error("### ⚠️ Security Alert: Already Checked In")
+        
+        duplicate_badge = """
+        <div class="badge-container duplicate">
+            <p style="margin:0; font-size:12px; color:#ef4444; font-weight:700; letter-spacing:0.5px;">FLAGGED RETRY ATTEMPT</p>
+            <div class="badge-number" style="color:#ef4444;">DENIED</div>
+            <p style="margin:0; font-size:17px; color:#ffffff; font-weight:600;">Player: {name}</p>
+        </div>
+        """.format(name=payload.get('name', 'Unknown'))
+        st.markdown(duplicate_badge, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("📷 Open Lens For Next Player"):
+        st.session_state.active_scan_completed = False
+        st.rerun()
+
+# -------------------------------------------------------------------------
+# INTERFACE STATE 2: ACTIVE SCANNER VIEWSCREEN
+# -------------------------------------------------------------------------
+else:
+    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the camera viewfinder box below:</p>", unsafe_allow_html=True)
+    
+    scanned_raw = qrcode_scanner(key='live_marshal_camera_engine')
+    
+    if scanned_raw:
+        try:
+            parts = scanned_raw.split("-")
+            row_id = int(parts[1]) 
+            
+            player_row = all_records[row_id] 
+            player_name = "{0} {1}".format(player_row[1], player_row[0])
+            bag_number = player_row[5] 
+            attendance_status = str(player_row[6]).strip()
+
+            if attendance_status == "Checked-In":
+                st.session_state.display_payload = {"status": "DUPLICATE", "name": player_name}
+            else:
+                gas_data = send_checkin_to_gas(scanned_raw)
+                st.session_state.display_payload = {
+                    "status": "SUCCESS", 
+                    "name": player_name, 
+                    "bag": bag_number,
+                    "id_url": gas_data.get("idUrl", "")
+                }
+            
+            st.session_state.active_scan_completed = True
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error
