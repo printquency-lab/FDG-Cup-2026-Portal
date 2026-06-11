@@ -60,25 +60,23 @@ st.markdown("""
     }
     
     /* 4. PERFECTLY VERTICALLY CENTERED VIEWFINDER WINDOW */
-    /* This acts as the outer mask window box holding the green border */
     div[data-testid="stCustomComponentV1"] {
         width: 100% !important;
-        height: 290px !important; /* Controls the clean height on mobile screens */
+        height: 290px !important; 
         border-radius: 20px !important;
-        border: 3px solid #10b981 !important; /* Emerald framing stays perfectly sharp */
-        overflow: hidden !important; /* Slices away dead black zones at the bottom */
+        border: 3px solid #10b981 !important; 
+        overflow: hidden !important; 
         position: relative !important;
         background-color: #111827;
         box-shadow: 0 12px 28px rgba(0,0,0,0.5);
         margin-bottom: 15px !important;
     }
     
-    /* Gives the internal iframe enough height room to drop the white marks to the absolute center */
     div[data-testid="stCustomComponentV1"] iframe {
         width: 100% !important;
         height: 350px !important; 
         position: absolute !important;
-        top: -12px !important; /* Nudges the frame upwards to perfectly balance the viewfinder vertical center */
+        top: -12px !important; 
         left: 0 !important;
         border: none !important;
     }
@@ -105,6 +103,13 @@ st.markdown("""
     .badge-container.duplicate { border: 1px solid #ef4444; }
     .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 4px 0; }
     
+    /* Elegant rounded frame styling for the incoming Player ID Image display card */
+    .stImage img {
+        border-radius: 16px !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    }
+    
     /* Interface Clutter Cleaner */
     #MainMenu, footer {visibility: hidden;}
     .block-container {padding-bottom: 0rem !important;}
@@ -126,7 +131,7 @@ st.markdown("---")
 # =========================================================================
 # CONFIGURATION TARGETS
 # =========================================================================
-GAS_URL = "https://script.google.com/macros/s/AKfycbxRFe12YikzzzbaNsFuun22bfzqfydewNaAeafqWY2lfXNlibQhqkwBMsynOiGwJIGRDw/exec" 
+GAS_URL = "https://script.google.com/macros/s/AKfycbxME5wYE0Oj25ceIfA0gKgmh0aRTmWgeuTeHRk1Q_afsKI7BUtnNfir89VjOn9ibnAr/exec" 
 SPREADSHEET_ID = "1l4khiRO2fGqZQ600xcdrVNY_sP0NvmDdPQiOa-jPfR8"
 
 # State Management
@@ -135,17 +140,36 @@ if "active_scan_completed" not in st.session_state:
 if "display_payload" not in st.session_state:
     st.session_state.display_payload = {}
 
+# Helper Function: Extracts raw asset IDs from Google Drive URLs to feed direct image matrices
+def get_direct_drive_url(url):
+    if not url or "drive.google.com" not in url:
+        return url
+    try:
+        if "/file/d/" in url:
+            file_id = url.split("/file/d/")[1].split("/")[0]
+            return f"https://drive.google.com/uc?export=view&id={file_id}"
+        elif "id=" in url:
+            file_id = url.split("id=")[1].split("&")[0]
+            return f"https://drive.google.com/uc?export=view&id={file_id}"
+    except:
+        pass
+    return url
+
 # Data Pipeline Engine
 def fetch_sheet_data():
     csv_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid=0"
     df = pd.read_csv(csv_url, header=None)
     return df.values.tolist()
 
-def send_checkin_to_gas(row_id):
+# Updated to parse out backend payload configurations
+def send_checkin_to_gas(scanned_pid):
     try:
-        requests.get(GAS_URL, params={"mode": "verify_bypass", "pid": row_id}, timeout=10)
+        response = requests.get(GAS_URL, params={"mode": "verify_bypass", "pid": scanned_pid}, timeout=10)
+        if response.status_code == 200:
+            return response.json()
     except:
         pass
+    return {}
 
 all_records = fetch_sheet_data()
 
@@ -164,6 +188,12 @@ if st.session_state.active_scan_completed:
                 <p style="margin:0; font-size:17px; color:#ffffff; font-weight:600;">Player: {payload['name']}</p>
             </div>
         """, unsafe_allow_html=True)
+        
+        # Render the identification photo seamlessly right beneath the asset metrics card
+        if payload.get("id_url"):
+            st.markdown("<p style='margin:15px 0 5px 5px; font-size:12px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;'>VERIFICATION PROFILE PHOTO</p>", unsafe_allow_html=True)
+            direct_img_link = get_direct_drive_url(payload["id_url"])
+            st.image(direct_img_link, use_container_width=True)
         
     elif payload["status"] == "DUPLICATE":
         st.error("### ⚠️ Security Alert: Already Checked In")
@@ -202,11 +232,13 @@ else:
             if attendance_status == "Checked-In":
                 st.session_state.display_payload = {"status": "DUPLICATE", "name": player_name}
             else:
-                send_checkin_to_gas(row_id)
+                # Passing the full parsed raw code (e.g. FDG26-716) makes log matching reliable
+                gas_data = send_checkin_to_gas(scanned_raw)
                 st.session_state.display_payload = {
                     "status": "SUCCESS", 
                     "name": player_name, 
-                    "bag": bag_number
+                    "bag": bag_number,
+                    "id_url": gas_data.get("idUrl", "")
                 }
             
             st.session_state.active_scan_completed = True
