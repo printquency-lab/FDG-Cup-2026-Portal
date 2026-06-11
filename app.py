@@ -37,7 +37,7 @@ st.markdown("""
 st.markdown("---")
 
 # --- CONFIG ---
-GAS_URL = "https://script.google.com/macros/s/AKfycbySHk7XxRnBaDC3zEbb3hSSm5SKTcyaLQCBQ97NEGiULo6aK0sqUp0J_ymSxIQFRuBppA/exec" 
+GAS_URL = "https://script.google.com/macros/s/AKfycbx7VLxQDXeCK8JXpWzXsH-aJEIftRwOTfRBPKaaLMoVNptLrNEl6l0TBopDQ4HymrHKPQ/exec" 
 SPREADSHEET_ID = "1l4khiRO2fGqZQ600xcdrVNY_sP0NvmDdPQiOa-jPfR8"
 
 # --- SESSION STATE ---
