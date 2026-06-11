@@ -1,5 +1,5 @@
 streamlit
-streamlit-qrcode-scanner
-pandas
+opencv-python-headless
+pyzbar
 requests
-streamlit-js-eval
+pandas
