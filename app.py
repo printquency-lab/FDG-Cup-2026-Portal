@@ -1,7 +1,7 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import requests
+from streamlit_js_eval import streamlit_js_eval
 
 # 1. Page Configuration Setup
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
@@ -22,6 +22,7 @@ st.markdown("""
     .branding-title { font-size: 30px; font-weight: 800; color: #ffffff; font-family: 'Space Grotesk', sans-serif; }
     .branding-subtitle { font-size: 13px; font-weight: 700; color: #10b981; letter-spacing: 2px; text-transform: uppercase; }
     
+    .scanner-wrapper { width: 100%; max-width: 380px; margin: 0 auto; background: #111827; border: 3px solid #10b981; border-radius: 20px; overflow: hidden; position: relative; }
     div.stButton > button:first-child { background-color: #10b981 !important; color: white !important; font-weight: bold; width: 100% !important; padding: 14px !important; border-radius: 12px !important; }
     .badge-container { background: rgba(0, 0, 0, 0.4); padding: 20px; border-radius: 14px; border: 1px solid #10b981; text-align: center; margin-top: 10px; }
     .badge-container.duplicate { border: 1px solid #ef4444; }
@@ -47,6 +48,8 @@ if "active_scan_completed" not in st.session_state:
     st.session_state.active_scan_completed = False
 if "display_payload" not in st.session_state:
     st.session_state.display_payload = {}
+if "last_scanned_raw" not in st.session_state:
+    st.session_state.last_scanned_raw = None
 
 def get_embed_photo_url(drive_url):
     """Converts a standard Google Drive link directly into a native web image stream."""
@@ -106,88 +109,76 @@ if st.session_state.active_scan_completed:
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("📷 Open Lens For Next Player"):
         st.session_state.active_scan_completed = False
+        st.session_state.last_scanned_raw = None
+        st.session_state.display_payload = {}
         st.rerun()
 
 # -------------------------------------------------------------------------
-# INTERFACE STATE 2: HIGH-PERFORMANCE WEB QR LENS GENERATOR
+# INTERFACE STATE 2: HIGH-PERFORMANCE SCANNING LENS VIA COGNITIVE EVAL BRIDGE
 # -------------------------------------------------------------------------
 else:
     st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the camera viewfinder box below:</p>", unsafe_allow_html=True)
     
-    # High performance custom HTML5 lens script with hardware vibration triggers
-    qr_hardware_lens_html = """
-    <div style="width:100%; max-width:380px; margin:0 auto; background:#111827; border:3px solid #10b981; border-radius:20px; overflow:hidden; position:relative; box-sizing:border-box;">
-        <div id="loading-message" style="color:#9ca3af; text-align:center; padding:40px 10px; font-family:sans-serif; font-size:14px;">Initializing high-performance lens...</div>
-        <canvas id="qr-canvas" style="width:100%; display:none; vertical-align:middle;"></canvas>
-        <video id="qr-video" style="display:none;"></video>
-    </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <script>
-        const video = document.getElementById('qr-video');
-        const canvas = document.getElementById('qr-canvas');
-        const ctx = canvas.getContext('2d');
-        const loader = document.getElementById('loading-message');
-        let activeProcessing = true;
+    # We construct the HTML framework within a clean string safely isolated from formatting conflict bugs
+    raw_js_lens_injector = (
+        "new Promise((resolve) => {"
+        "   const wrapper = document.createElement('div');"
+        "   wrapper.className = 'scanner-wrapper';"
+        "   wrapper.innerHTML = `"
+        "       <div style='width:100%; background:#111827; box-sizing:border-box; position:relative; min-height:260px;'>"
+        "           <div id='lens-loader' style='color:#9ca3af; text-align:center; padding:100px 10px; font-family:sans-serif; font-size:14px;'>Opening fast video streams...</div>"
+        "           <canvas id='canvas-stream' style='width:100%; display:none; vertical-align:middle; border-radius:16px;'></canvas>"
+        "           <video id='video-stream' style='display:none;'></video>"
+        "       </div>`;"
+        "   document.body.appendChild(wrapper);"
+        "   "
+        "   const scr = document.createElement('script');"
+        "   scr.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';"
+        "   scr.onload = () => {"
+        "       const video = document.getElementById('video-stream');"
+        "       const canvas = document.getElementById('canvas-stream');"
+        "       const ctx = canvas.getContext('2d');"
+        "       const loader = document.getElementById('lens-loader');"
+        "       "
+        "       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })"
+        "       .then((stream) => {"
+        "           video.srcObject = stream;"
+        "           video.setAttribute('playsinline', true);"
+        "           video.play();"
+        "           "
+        "           function parseVideoTrack() {"
+        "               if (video.readyState === video.HAVE_CURRENT_DATA) {"
+        "                   loader.style.display = 'none';"
+        "                   canvas.style.display = 'block';"
+        "                   canvas.height = video.videoHeight;"
+        "                   canvas.width = video.videoWidth;"
+        "                   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);"
+        "                   const img = ctx.getImageData(0, 0, canvas.width, canvas.height);"
+        "                   const qr = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });"
+        "                   if (qr && qr.data.trim() !== '') {"
+        "                       if (window.navigator && window.navigator.vibrate) {"
+        "                           window.navigator.vibrate(200);"
+        "                       }"
+        "                       stream.getTracks().forEach(t => t.stop());"
+        "                       resolve(qr.data.trim());"
+        "                       return;"
+        "                   }"
+        "               }"
+        "               requestAnimationFrame(parseVideoTrack);"
+        "           }"
+        "           requestAnimationFrame(parseVideoTrack);"
+        "       }).catch(() => { loader.innerText = '⚠️ Camera access denied.'; });"
+        "   };"
+        "   document.body.appendChild(scr);"
+        "})"
+    )
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        .then(function(stream) {
-            video.srcObject = stream;
-            video.setAttribute("playsinline", true);
-            video.play();
-            requestAnimationFrame(analyzeFrame);
-        })
-        .catch(function(err) {
-            loader.innerText = "⚠️ Camera access denied or unavailable on this device.";
-        });
-
-        function analyzeFrame() {
-            if (!activeProcessing) return;
-            if (video.readyState === video.HAVE_CURRENT_DATA) {
-                loader.style.display = "none";
-                canvas.style.display = "block";
-                canvas.height = video.videoHeight;
-                canvas.width = video.videoWidth;
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                var code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "dontInvert" });
-                
-                if (code && code.data.trim() !== "") {
-                    activeProcessing = false;
-                    
-                    // Hardware Trigger: Cause device to vibrate for 200ms instantly on successful read
-                    if (navigator.vibrate) { navigator.vibrate(200); }
-                    
-                    // Draw successful layout match overlay on canvas screen
-                    ctx.lineWidth = 6;
-                    ctx.strokeStyle = "#10b981";
-                    ctx.strokeRect(code.location.topLeftCorner.x, code.location.topLeftCorner.y, 
-                                   code.location.topRightCorner.x - code.location.topLeftCorner.x, 
-                                   code.location.bottomLeftCorner.y - code.location.topLeftCorner.y);
-
-                    // Send the raw scanned data payload text safely up to Streamlit runtime
-                    setTimeout(() => {
-                        window.parent.postMessage({
-                            isstreamlit: true,
-                            type: "streamlit:set_component_value",
-                            value: code.data
-                        }, "*");
-                    }, 150);
-                    return;
-                }
-            }
-            requestAnimationFrame(analyzeFrame);
-        }
-    </script>
-    """
+    # Fire evaluation engine securely across the execution context layer
+    scanned_payload = streamlit_js_eval(js_expressions=raw_js_lens_injector, key="eval_lens_stream")
     
-    # Render the custom scanner container frame element seamlessly inside your layout
-    scanned_code = components.html(qr_hardware_lens_html, height=305, scrolling=False)
-    
-    # Process code if data passes back down from our JavaScript engine framework safely
-    if scanned_code:
-        clean_code = str(scanned_code).strip()
+    if scanned_payload and str(scanned_payload).strip() != "" and scanned_payload != st.session_state.last_scanned_raw:
+        clean_code = str(scanned_payload).strip()
+        st.session_state.last_scanned_raw = clean_code
         
         attendance_csv_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Attendance%20Log"
         master_csv_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=MasterList"
@@ -217,7 +208,7 @@ else:
             if not matched_master.empty:
                 master_row = matched_master.iloc[0]
                 
-                # Format bag cleanly as integer string split to clear decimals
+                # Clean decimal formatting issues safely (.0 eliminated)
                 raw_bag = str(master_row['Bag ref number']).strip()
                 bag_no = raw_bag.split('.')[0] if '.' in raw_bag else raw_bag
                 
