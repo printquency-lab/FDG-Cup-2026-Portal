@@ -2,3 +2,4 @@ streamlit
 streamlit-qrcode-scanner
 pandas
 requests
+streamlit-js-eval
