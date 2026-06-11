@@ -5,7 +5,7 @@ from streamlit_js_eval import streamlit_js_eval
 # 1. Page Config Setup
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# 2. Layout Stylesheet Overrides
+# 2. Global Styling & CSS UI Injection
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] { background-color: #0f172a; }
@@ -32,10 +32,10 @@ st.markdown("""
 st.markdown("<div class='branding-container'><div class='branding-title'>FDG CUP <span style='color:#facc15;'>2026</span></div><div class='branding-subtitle'>Gate Marshal Portal</div></div>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Backend Webhook Configuration Target
+# Backend Webhook Deployment URL Target
 GAS_URL = "https://script.google.com/macros/s/AKfycbw83tC6XyAYgPnNg2nTB8NyZN0J9DvjtUAEiSNb3yS3Ze2EVz5q2qqZP8BkDbE6cM42NQ/exec"
 
-# Initialize Session Memory States Safely
+# Initialize App Memory Safely
 if "active_scan_completed" not in st.session_state:
     st.session_state.active_scan_completed = False
 if "display_payload" not in st.session_state:
@@ -43,24 +43,8 @@ if "display_payload" not in st.session_state:
 if "last_scanned_raw" not in st.session_state:
     st.session_state.last_scanned_raw = None
 
-def get_embed_photo_url(drive_url):
-    """Normalizes the direct Google Drive link to a browser-embeddable thumbnail."""
-    if not drive_url:
-        return None
-    url_str = str(drive_url).strip()
-    if "drive.google.com" not in url_str:
-        return None
-    try:
-        if "/file/d/" in url_str:
-            file_id = url_str.split("/file/d/")[1].split("/")[0]
-        else:
-            file_id = url_str.split("id=")[1].split("&")[0]
-        return f"https://drive.google.com/thumbnail?id={file_id}&sz=w600"
-    except Exception:
-        return None
-
 # -------------------------------------------------------------------------
-# INTERFACE STATE A: DISPATCH PLAYER CHECK-IN SCAN RESULTS
+# INTERFACE STATE A: SHOW SCAN VERIFICATION RESULT
 # -------------------------------------------------------------------------
 if st.session_state.active_scan_completed:
     res = st.session_state.display_payload
@@ -76,11 +60,11 @@ if st.session_state.active_scan_completed:
             </div>
         """, unsafe_allow_html=True)
         
-        # Display profile photo
-        img_url = get_embed_photo_url(res.get("idUrl"))
-        if img_url:
+        # Display the profile image URL passed from your backend
+        img_url = res.get("idUrl")
+        if img_url and str(img_url).startswith("http"):
             st.markdown("<p style='text-align:center; margin:18px 0 0 0; font-size:12px; color:#9ca3af; font-weight:700;'>VERIFICATION PROFILE PHOTO</p>", unsafe_allow_html=True)
-            st.image(img_url, use_container_width=True)
+            st.image(str(img_url).strip(), use_container_width=True)
                 
     elif status == "DUPLICATE":
         st.error("### ⚠️ Security Alert: Already Checked In")
@@ -95,7 +79,7 @@ if st.session_state.active_scan_completed:
     else:
         st.error("### ❌ Access Denied: Invalid Credentials")
         scanned_id = res.get('scanned_id', 'Unknown')
-        st.warning(f"The scanned identifier **{scanned_id}** does not exist in the registration database.")
+        st.warning(f"The scanned credential identifier **{scanned_id}** does not exist within the active registration sheet database.")
         
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("📷 Open Lens For Next Player"):
@@ -105,15 +89,13 @@ if st.session_state.active_scan_completed:
         st.rerun()
 
 # -------------------------------------------------------------------------
-# INTERFACE STATE B: LIVE LIVE CAMERA SCANNING LENS (AUTO-GROW INSTALLED)
+# INTERFACE STATE B: LIVE CAMERA VIEWPORT (AUTO-GROW INSTALLED)
 # -------------------------------------------------------------------------
 else:
     st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the camera viewfinder box below:</p>", unsafe_allow_html=True)
     
-    # Custom JS component containing the window frame auto-expansion layout fix
     js_camera_lens_injector = """
     new Promise((resolve) => {
-        // Force the wrapper container iframe to hold its layout height open at 350px
         if (window.frameElement) {
             window.frameElement.style.height = '350px';
         }
@@ -133,4 +115,64 @@ else:
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
         script.onload = () => {
-            const video = document.getElementById('vid
+            const video = document.getElementById('vid');
+            const canvas = document.getElementById('cvs');
+            const ctx = canvas.getContext('2d');
+            const loader = document.getElementById('lvl');
+            
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then((stream) => {
+                video.srcObject = stream;
+                video.setAttribute("playsinline", true);
+                video.play();
+                
+                function loop() {
+                    if (video.readyState === video.HAVE_CURRENT_DATA) {
+                        loader.style.display = 'none';
+                        canvas.style.display = 'block';
+                        canvas.height = video.videoHeight;
+                        canvas.width = video.videoWidth;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const qr = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+                        
+                        if (qr && qr.data.trim() !== '') {
+                            if (navigator.vibrate) { navigator.vibrate(200); }
+                            stream.getTracks().forEach(t => t.stop());
+                            div.remove();
+                            window.jsQRInitialized = false;
+                            resolve(qr.data.trim());
+                            return;
+                        }
+                    }
+                    requestAnimationFrame(loop);
+                }
+                requestAnimationFrame(loop);
+            }).catch((err) => { 
+                loader.innerHTML = '⚠️ Camera Blocked<br><span style="font-size:11px;color:#ef4444;font-weight:normal;">Please grant site permissions & reload.</span>'; 
+            });
+        };
+        document.body.appendChild(script);
+    });
+    """
+
+    scanned_payload = streamlit_js_eval(js_expressions=js_camera_lens_injector, key="live_marshal_lens")
+    
+    if scanned_payload and str(scanned_payload).strip() != "" and scanned_payload != st.session_state.last_scanned_raw:
+        clean_code = str(scanned_payload).strip()
+        st.session_state.last_scanned_raw = clean_code
+        
+        with st.spinner("Verifying credentials live..."):
+            try:
+                # FIXED PARAMETERS: We query using 'id' to ensure match with your sheet logic
+                gas_res = requests.get(GAS_URL, params={"mode": "verify_bypass", "id": clean_code}, timeout=12).json()
+                if gas_res.get("status") == "NOT_FOUND":
+                    st.session_state.display_payload = {"status": "NOT_FOUND", "scanned_id": clean_code}
+                else:
+                    st.session_state.display_payload = gas_res
+            except Exception as e:
+                st.session_state.display_payload = {"status": "ERROR", "message": str(e), "scanned_id": clean_code}
+                
+        st.session_state.active_scan_completed = True
+        st.rerun()
