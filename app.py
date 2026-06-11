@@ -5,7 +5,7 @@ import requests
 # 1. Page Configuration Setup
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# 2. Crash-Proof Static CSS (No f-strings used here to avoid curly bracket syntax errors)
+# 2. Crash-Proof Static CSS
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] { background-color: #0f172a; }
@@ -31,7 +31,14 @@ st.markdown("""
     .badge-container { background: rgba(0, 0, 0, 0.4); padding: 20px; border-radius: 14px; border: 1px solid #10b981; text-align: center; margin-top: 10px; }
     .badge-container.duplicate { border: 1px solid #ef4444; }
     .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 4px 0; }
-    .stImage img { border-radius: 16px !important; box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); margin-top: 10px; }
+    
+    /* Centered display frame logic for player verification photos */
+    .photo-display-frame {
+        width: 100%; max-width: 320px; margin: 12px auto 0 auto;
+        border-radius: 16px; border: 2px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5); overflow: hidden; display: block;
+    }
+    
     #MainMenu, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
@@ -48,17 +55,19 @@ if "active_scan_completed" not in st.session_state:
 if "display_payload" not in st.session_state:
     st.session_state.display_payload = {}
 
-def get_direct_photo_bytes(drive_url):
-    """Safely extracts image file IDs from paths and streams image file bytes directly."""
+def get_embed_photo_url(drive_url):
+    """Converts a standard Google Drive file link into a secure direct browser embed URL."""
     if not drive_url or pd.isna(drive_url) or "drive.google.com" not in str(drive_url):
         return None
     try:
         url_str = str(drive_url)
-        file_id = url_str.split("/file/d/")[1].split("/")[0] if "/file/d/" in url_str else url_str.split("id=")[1].split("&")[0]
-        download_url = f"https://docs.google.com/uc?export=download&id={file_id}"
-        resp = requests.get(download_url, timeout=10)
-        if resp.status_code == 200 and len(resp.content) > 1000:
-            return resp.content
+        # Parse out unique file ID parameter block
+        if "/file/d/" in url_str:
+            file_id = url_str.split("/file/d/")[1].split("/")[0]
+        else:
+            file_id = url_str.split("id=")[1].split("&")[0]
+        # Return official open-view web rendering path
+        return f"https://drive.google.com/uc?id={file_id}"
     except Exception:
         pass
     return None
@@ -80,12 +89,13 @@ if st.session_state.active_scan_completed:
         """, unsafe_allow_html=True)
         
         if res.get("id_url"):
-            st.markdown("<p style='margin:15px 0 0 5px; font-size:12px; color:#9ca3af; font-weight:700;'>VERIFICATION PROFILE PHOTO</p>", unsafe_allow_html=True)
-            image_data = get_direct_photo_bytes(res["id_url"])
-            if image_data:
-                st.image(image_data, use_container_width=True)
+            st.markdown("<p style='text-align:center; margin:18px 0 0 0; font-size:12px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;'>VERIFICATION PROFILE PHOTO</p>", unsafe_allow_html=True)
+            embed_img_url = get_embed_photo_url(res["id_url"])
+            if embed_img_url:
+                # Use raw clean HTML to render image natively inside browser layout wrapper
+                st.markdown(f"<img src='{embed_img_url}' class='photo-display-frame' alt='ID Photo'/>", unsafe_allow_html=True)
             else:
-                st.info("ℹ️ Profile photo file could not be generated from link path.")
+                st.info("ℹ️ Profile photo file link format unrecognized or empty.")
         else:
             st.info("ℹ️ Profile verified. No identification attachment found.")
                 
@@ -120,18 +130,18 @@ else:
     if scanned_code:
         clean_code = str(scanned_code).strip()
         
-        # Load sheets targeting your exact worksheet names dynamically
+        # Pull specified sheets using explicit Google Query names
         attendance_csv_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Attendance%20Log"
         master_csv_url = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=MasterList"
         
         df_log = pd.read_csv(attendance_csv_url)
         df_master = pd.read_csv(master_csv_url)
         
-        # Clean header spaces across both databases
+        # Clean header spacing
         df_log.columns = df_log.columns.str.strip()
         df_master.columns = df_master.columns.str.strip()
         
-        # 1. Step One: Locate unique code inside "Attendance Log" sheet
+        # 1. Locate unique code inside "Attendance Log" sheet
         matched_log = df_log[df_log['Players ID'].astype(str).str.strip() == clean_code]
         
         if not matched_log.empty:
@@ -139,7 +149,7 @@ else:
             player_name = str(log_row['Player Name']).strip()
             photo_link = log_row['ID File URL']
             
-            # 2. Step Two: Cross-verify current attendance status and bag info on the "MasterList"
+            # 2. Cross-verify registration check-in status from "MasterList" sheet
             matched_master = pd.DataFrame()
             for idx, row_m in df_master.iterrows():
                 full_m_name = f"{row_m['First Name']} {row_m['Last Name']}".lower().strip()
@@ -152,11 +162,10 @@ else:
                 bag_no = master_row['Bag ref number']
                 attendance_status = str(master_row['Status']).strip()
                 
-                # Check status field directly from MasterList sheet database
                 if attendance_status == "Checked-In":
                     st.session_state.display_payload = {"status": "DUPLICATE", "name": player_name}
                 else:
-                    # Fire Webhook update call to Google Apps Script backend database
+                    # Fire update call to Apps Script API microservice
                     try:
                         gas_res = requests.get(GAS_URL, params={"mode": "verify_bypass", "pid": clean_code}, timeout=10).json()
                         if gas_res.get("idUrl"):
@@ -168,12 +177,10 @@ else:
                         "status": "SUCCESS", "name": player_name, "bag": bag_no, "id_url": photo_link
                     }
             else:
-                # Name found in log tab, but master record lookup missing fallback
                 st.session_state.display_payload = {
                     "status": "SUCCESS", "name": player_name, "bag": "N/A", "id_url": photo_link
                 }
         else:
-            # Code parsed doesn't exist inside the spreadsheet database
             st.session_state.display_payload = {"status": "NOT_FOUND", "scanned_id": clean_code}
             
         st.session_state.active_scan_completed = True
