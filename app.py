@@ -108,20 +108,31 @@ if st.session_state.active_scan_completed:
         st.rerun()
 
 # -------------------------------------------------------------------------
-# INTERFACE STATE 2: HIGH-PERFORMANCE LIVE HARDWARE SCANNING LENS
+# INTERFACE STATE 2: LIVE HARDWARE SCANNING LENS (WITH AUTOGROW CONTAINER)
 # -------------------------------------------------------------------------
 else:
     st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the camera viewfinder box below:</p>", unsafe_allow_html=True)
     
-    # Fully contained clean JS string injection block - avoids syntax crashes
+    # Injected JS script containing the window frame auto-expansion layout fix
     js_camera_lens_injector = """
     new Promise((resolve) => {
+        // CRITICAL FIX: Instantly expand Streamlit's iframe wrapper layout container height
+        if (window.frameElement) {
+            window.frameElement.style.height = '350px';
+        }
+        
+        // Zero out iframe body padding to maximize scanner screen space
+        document.documentElement.style.margin = '0';
+        document.body.style.margin = '0';
+        
         if (window.jsQRInitialized) { return; }
         window.jsQRInitialized = true;
         
         const div = document.createElement('div');
-        div.style.cssText = 'width:100%;max-width:380px;margin:0 auto;background:#111827;border:3px solid #10b981;border-radius:20px;overflow:hidden;position:relative;min-height:250px;box-sizing:border-box;';
-        div.innerHTML = '<div id="lvl" style="color:#9ca3af;text-align:center;padding:95px 10px;font-family:sans-serif;font-size:14px;">Initializing mobile camera stream...</div><canvas id="cvs" style="width:100%;display:none;vertical-align:middle;"></canvas><video id="vid" style="display:none;" playsinline></video>';
+        div.style.cssText = 'width:100%;max-width:420px;margin:0 auto;background:#111827;border:3px solid #10b981;border-radius:20px;overflow:hidden;position:relative;height:300px;box-sizing:border-box;';
+        div.innerHTML = '<div id="lvl" style="color:#9ca3af;text-align:center;padding:130px 10px;font-family:sans-serif;font-size:14px;font-weight:600;">Initializing mobile camera stream...</div><canvas id="cvs" style="width:100%;height:100%;display:none;object-fit:cover;"></canvas><video id="vid" style="display:none;" playsinline></video>';
+        
+        document.body.innerHTML = '';
         document.body.appendChild(div);
         
         const script = document.createElement('script');
@@ -135,6 +146,7 @@ else:
             navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
             .then((stream) => {
                 video.srcObject = stream;
+                video.setAttribute("playsinline", true);
                 video.play();
                 
                 function loop() {
@@ -160,7 +172,9 @@ else:
                     requestAnimationFrame(loop);
                 }
                 requestAnimationFrame(loop);
-            }).catch(() => { loader.innerText = '⚠️ Camera blocked or environment lens unavailable.'; });
+            }).catch((err) => { 
+                loader.innerHTML = '⚠️ Camera Blocked<br><span style="font-size:11px;color:#ef4444;font-weight:normal;">Please grant site permissions & reload.</span>'; 
+            });
         };
         document.body.appendChild(script);
     });
@@ -172,7 +186,6 @@ else:
         clean_code = str(scanned_payload).strip()
         st.session_state.last_scanned_raw = clean_code
         
-        # Pull registration data directly from the live Google Apps Script endpoint
         with st.spinner("Verifying credentials live..."):
             try:
                 gas_res = requests.get(GAS_URL, params={"mode": "verify_bypass", "pid": clean_code}, timeout=12).json()
