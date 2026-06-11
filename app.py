@@ -2,10 +2,10 @@ import streamlit as st
 import requests
 from streamlit_js_eval import streamlit_js_eval
 
-# 1. Page Configuration Setup
+# 1. Page Config Setup
 st.set_page_config(page_title="FDG Cup 2026 - Gate Marshal Portal", page_icon="🛡️", layout="centered")
 
-# 2. Complete Layout Stylesheet Customization
+# 2. Layout Stylesheet Overrides
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] { background-color: #0f172a; }
@@ -25,12 +25,6 @@ st.markdown("""
     .badge-container { background: rgba(0, 0, 0, 0.4); padding: 20px; border-radius: 14px; border: 1px solid #10b981; text-align: center; margin-top: 10px; }
     .badge-container.duplicate { border: 1px solid #ef4444; }
     .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 4px 0; }
-    
-    .photo-display-frame {
-        width: 100%; max-width: 320px; margin: 12px auto 0 auto;
-        border-radius: 16px; border: 2px solid rgba(255, 255, 255, 0.15);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: block;
-    }
     #MainMenu, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
@@ -38,9 +32,10 @@ st.markdown("""
 st.markdown("<div class='branding-container'><div class='branding-title'>FDG CUP <span style='color:#facc15;'>2026</span></div><div class='branding-subtitle'>Gate Marshal Portal</div></div>", unsafe_allow_html=True)
 st.markdown("---")
 
-# 3. Webhook Endpoint Target Parameter Setup
+# Backend Webhook Configuration Target
 GAS_URL = "https://script.google.com/macros/s/AKfycbw83tC6XyAYgPnNg2nTB8NyZN0J9DvjtUAEiSNb3yS3Ze2EVz5q2qqZP8BkDbE6cM42NQ/exec"
 
+# Initialize Session Memory States Safely
 if "active_scan_completed" not in st.session_state:
     st.session_state.active_scan_completed = False
 if "display_payload" not in st.session_state:
@@ -49,27 +44,29 @@ if "last_scanned_raw" not in st.session_state:
     st.session_state.last_scanned_raw = None
 
 def get_embed_photo_url(drive_url):
-    """Converts a restricted file link into a secure, allowed web preview thumbnail."""
-    if not drive_url or any(x in str(drive_url) for x in ["None", "NaN", "undefined", "View ID"]) or "drive.google.com" not in str(drive_url):
+    """Normalizes the direct Google Drive link to a browser-embeddable thumbnail."""
+    if not drive_url:
+        return None
+    url_str = str(drive_url).strip()
+    if "drive.google.com" not in url_str:
         return None
     try:
-        url_str = str(drive_url).strip()
         if "/file/d/" in url_str:
             file_id = url_str.split("/file/d/")[1].split("/")[0]
         else:
             file_id = url_str.split("id=")[1].split("&")[0]
         return f"https://drive.google.com/thumbnail?id={file_id}&sz=w600"
     except Exception:
-        pass
-    return None
+        return None
 
 # -------------------------------------------------------------------------
-# INTERFACE STATE 1: VIEW METRICS CHECK-IN RESULT SCREEN
+# INTERFACE STATE A: DISPATCH PLAYER CHECK-IN SCAN RESULTS
 # -------------------------------------------------------------------------
 if st.session_state.active_scan_completed:
     res = st.session_state.display_payload
+    status = res.get("status")
     
-    if res.get("status") == "SUCCESS":
+    if status == "SUCCESS":
         st.success("### ✓ Access Authorized & Checked In!")
         st.markdown(f"""
             <div class='badge-container'>
@@ -79,14 +76,13 @@ if st.session_state.active_scan_completed:
             </div>
         """, unsafe_allow_html=True)
         
-        embed_img_url = get_embed_photo_url(res.get("idUrl"))
-        if embed_img_url:
-            st.markdown("<p style='text-align:center; margin:18px 0 0 0; font-size:12px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;'>VERIFICATION PROFILE PHOTO</p>", unsafe_allow_html=True)
-            st.markdown(f"<img src='{embed_img_url}' class='photo-display-frame' alt='ID Photo'/>", unsafe_allow_html=True)
-        else:
-            st.info("ℹ️ Profile photo unavailable or private folder permissions need updating.")
+        # Display profile photo
+        img_url = get_embed_photo_url(res.get("idUrl"))
+        if img_url:
+            st.markdown("<p style='text-align:center; margin:18px 0 0 0; font-size:12px; color:#9ca3af; font-weight:700;'>VERIFICATION PROFILE PHOTO</p>", unsafe_allow_html=True)
+            st.image(img_url, use_container_width=True)
                 
-    elif res.get("status") == "DUPLICATE":
+    elif status == "DUPLICATE":
         st.error("### ⚠️ Security Alert: Already Checked In")
         st.markdown(f"""
             <div class='badge-container duplicate'>
@@ -98,7 +94,8 @@ if st.session_state.active_scan_completed:
         
     else:
         st.error("### ❌ Access Denied: Invalid Credentials")
-        st.warning(f"The scanned credential identifier **{res.get('scanned_id', 'Unknown')}** does not exist in the registration database.")
+        scanned_id = res.get('scanned_id', 'Unknown')
+        st.warning(f"The scanned identifier **{scanned_id}** does not exist in the registration database.")
         
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("📷 Open Lens For Next Player"):
@@ -108,20 +105,18 @@ if st.session_state.active_scan_completed:
         st.rerun()
 
 # -------------------------------------------------------------------------
-# INTERFACE STATE 2: LIVE HARDWARE SCANNING LENS (WITH AUTOGROW CONTAINER)
+# INTERFACE STATE B: LIVE LIVE CAMERA SCANNING LENS (AUTO-GROW INSTALLED)
 # -------------------------------------------------------------------------
 else:
     st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the camera viewfinder box below:</p>", unsafe_allow_html=True)
     
-    # Injected JS script containing the window frame auto-expansion layout fix
+    # Custom JS component containing the window frame auto-expansion layout fix
     js_camera_lens_injector = """
     new Promise((resolve) => {
-        // CRITICAL FIX: Instantly expand Streamlit's iframe wrapper layout container height
+        // Force the wrapper container iframe to hold its layout height open at 350px
         if (window.frameElement) {
             window.frameElement.style.height = '350px';
         }
-        
-        // Zero out iframe body padding to maximize scanner screen space
         document.documentElement.style.margin = '0';
         document.body.style.margin = '0';
         
@@ -138,63 +133,4 @@ else:
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
         script.onload = () => {
-            const video = document.getElementById('vid');
-            const canvas = document.getElementById('cvs');
-            const ctx = canvas.getContext('2d');
-            const loader = document.getElementById('lvl');
-            
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-            .then((stream) => {
-                video.srcObject = stream;
-                video.setAttribute("playsinline", true);
-                video.play();
-                
-                function loop() {
-                    if (video.readyState === video.HAVE_CURRENT_DATA) {
-                        loader.style.display = 'none';
-                        canvas.style.display = 'block';
-                        canvas.height = video.videoHeight;
-                        canvas.width = video.videoWidth;
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        
-                        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                        const qr = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
-                        
-                        if (qr && qr.data.trim() !== '') {
-                            if (navigator.vibrate) { navigator.vibrate(200); }
-                            stream.getTracks().forEach(t => t.stop());
-                            div.remove();
-                            window.jsQRInitialized = false;
-                            resolve(qr.data.trim());
-                            return;
-                        }
-                    }
-                    requestAnimationFrame(loop);
-                }
-                requestAnimationFrame(loop);
-            }).catch((err) => { 
-                loader.innerHTML = '⚠️ Camera Blocked<br><span style="font-size:11px;color:#ef4444;font-weight:normal;">Please grant site permissions & reload.</span>'; 
-            });
-        };
-        document.body.appendChild(script);
-    });
-    """
-
-    scanned_payload = streamlit_js_eval(js_expressions=js_camera_lens_injector, key="live_marshal_lens")
-    
-    if scanned_payload and str(scanned_payload).strip() != "" and scanned_payload != st.session_state.last_scanned_raw:
-        clean_code = str(scanned_payload).strip()
-        st.session_state.last_scanned_raw = clean_code
-        
-        with st.spinner("Verifying credentials live..."):
-            try:
-                gas_res = requests.get(GAS_URL, params={"mode": "verify_bypass", "pid": clean_code}, timeout=12).json()
-                if gas_res.get("status") == "NOT_FOUND":
-                    st.session_state.display_payload = {"status": "NOT_FOUND", "scanned_id": clean_code}
-                else:
-                    st.session_state.display_payload = gas_res
-            except Exception as e:
-                st.session_state.display_payload = {"status": "ERROR", "message": str(e)}
-                
-        st.session_state.active_scan_completed = True
-        st.rerun()
+            const video = document.getElementById('vid
