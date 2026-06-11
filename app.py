@@ -103,7 +103,7 @@ st.markdown("""
     .badge-container.duplicate { border: 1px solid #ef4444; }
     .badge-number { font-size: 46px; font-weight: 800; color: #facc15; margin: 4px 0; }
     
-    /* Elegant rounded frame styling for the incoming Player ID Image display card */
+    /* Elegant frame styling for the identification photo card */
     .stImage img {
         border-radius: 16px !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
@@ -131,7 +131,7 @@ st.markdown("---")
 # =========================================================================
 # CONFIGURATION TARGETS
 # =========================================================================
-GAS_URL = "https://script.google.com/macros/s/AKfycbxME5wYE0Oj25ceIfA0gKgmh0aRTmWgeuTeHRk1Q_afsKI7BUtnNfir89VjOn9ibnAr/exec" 
+GAS_URL = "https://script.google.com/macros/s/AKfycbxRFe12YikzzzbaNsFuun22bfzqfydewNaAeafqWY2lfXNlibQhqkwBMsynOiGwJIGRDw/exec" 
 SPREADSHEET_ID = "1l4khiRO2fGqZQ600xcdrVNY_sP0NvmDdPQiOa-jPfR8"
 
 # State Management
@@ -140,20 +140,23 @@ if "active_scan_completed" not in st.session_state:
 if "display_payload" not in st.session_state:
     st.session_state.display_payload = {}
 
-# Helper Function: Extracts raw asset IDs from Google Drive URLs to feed direct image matrices
 def get_direct_drive_url(url):
+    """
+    Converts a Google Drive viewer URL into a direct asset endpoint link
+    using the modern, cookie-free Google content delivery network.
+    """
     if not url or "drive.google.com" not in url:
         return url
     try:
         if "/file/d/" in url:
             file_id = url.split("/file/d/")[1].split("/")[0]
-            return f"https://drive.google.com/uc?export=view&id={file_id}"
         elif "id=" in url:
             file_id = url.split("id=")[1].split("&")[0]
-            return f"https://drive.google.com/uc?export=view&id={file_id}"
-    except:
-        pass
-    return url
+        else:
+            return url
+        return f"https://lh3.googleusercontent.com/d/{file_id}"
+    except Exception:
+        return url
 
 # Data Pipeline Engine
 def fetch_sheet_data():
@@ -161,13 +164,13 @@ def fetch_sheet_data():
     df = pd.read_csv(csv_url, header=None)
     return df.values.tolist()
 
-# Updated to parse out backend payload configurations
 def send_checkin_to_gas(scanned_pid):
+    """Hits the Google Apps Script endpoint and captures the returned JSON payload data."""
     try:
         response = requests.get(GAS_URL, params={"mode": "verify_bypass", "pid": scanned_pid}, timeout=10)
         if response.status_code == 200:
             return response.json()
-    except:
+    except Exception:
         pass
     return {}
 
@@ -182,66 +185,4 @@ if st.session_state.active_scan_completed:
     if payload["status"] == "SUCCESS":
         st.success("### ✓ Access Authorized & Checked In!")
         st.markdown(f"""
-            <div class="badge-container">
-                <p style="margin:0; font-size:12px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;">ASSIGNED EQUIPMENT DESIGNATION</p>
-                <div class="badge-number">BAG #{payload['bag']}</div>
-                <p style="margin:0; font-size:17px; color:#ffffff; font-weight:600;">Player: {payload['name']}</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Render the identification photo seamlessly right beneath the asset metrics card
-        if payload.get("id_url"):
-            st.markdown("<p style='margin:15px 0 5px 5px; font-size:12px; color:#9ca3af; font-weight:700; letter-spacing:0.5px;'>VERIFICATION PROFILE PHOTO</p>", unsafe_allow_html=True)
-            direct_img_link = get_direct_drive_url(payload["id_url"])
-            st.image(direct_img_link, use_container_width=True)
-        
-    elif payload["status"] == "DUPLICATE":
-        st.error("### ⚠️ Security Alert: Already Checked In")
-        st.markdown(f"""
-            <div class="badge-container duplicate">
-                <p style="margin:0; font-size:12px; color:#ef4444; font-weight:700; letter-spacing:0.5px;">FLAGGED RETRY ATTEMPT</p>
-                <div class="badge-number" style="color:#ef4444;">DENIED</div>
-                <p style="margin:0; font-size:17px; color:#ffffff; font-weight:600;">Player: {payload['name']}</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("📷 Open Lens For Next Player"):
-        st.session_state.active_scan_completed = False
-        st.rerun()
-
-# -------------------------------------------------------------------------
-# INTERFACE STATE 2: ALIGNED ACTIVE SCANNER SCREEN
-# -------------------------------------------------------------------------
-else:
-    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:13px; margin-bottom:12px;'>Align player pass credentials inside the matrix window box below:</p>", unsafe_allow_html=True)
-    
-    # Render Active Lens
-    scanned_raw = qrcode_scanner(key='live_marshal_camera_engine')
-    
-    if scanned_raw:
-        try:
-            parts = scanned_raw.split("-")
-            row_id = int(parts[1]) 
-            
-            player_row = all_records[row_id] 
-            player_name = f"{player_row[1]} {player_row[0]}"
-            bag_number = player_row[5] 
-            attendance_status = str(player_row[6]).strip()
-
-            if attendance_status == "Checked-In":
-                st.session_state.display_payload = {"status": "DUPLICATE", "name": player_name}
-            else:
-                # Passing the full parsed raw code (e.g. FDG26-716) makes log matching reliable
-                gas_data = send_checkin_to_gas(scanned_raw)
-                st.session_state.display_payload = {
-                    "status": "SUCCESS", 
-                    "name": player_name, 
-                    "bag": bag_number,
-                    "id_url": gas_data.get("idUrl", "")
-                }
-            
-            st.session_state.active_scan_completed = True
-            st.rerun()
-        except Exception as e:
-            st.error(f"Error parsing scan data pipeline: {e}")
+            <div class="badge
