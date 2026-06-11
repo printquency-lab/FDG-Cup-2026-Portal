@@ -24,7 +24,7 @@ st.markdown("""
 
     [data-testid="stAppViewContainer"] {
 
-        background-image: url('https://lh3.googleusercontent.com/d/1Ta76TkvnUcNszyAPIsmob0oCMoMFzbTC');
+        background-image: url('https://drive.google.com/file/d/1Ta76TkvnUcNszyAPIsmob0oCMoMFzbTC/view?usp=sharing');
 
         background-size: cover;
 
