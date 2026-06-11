@@ -1,5 +1,5 @@
 streamlit
-opencv-python-headless
-pyzbar
 requests
 pandas
+opencv-python-headless
+pyzbar
